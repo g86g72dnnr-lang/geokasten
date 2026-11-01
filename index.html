@@ -464,6 +464,20 @@ var TIERE = (function () {
   CH.push({ key: 'b6', label: 'Bundesländer und Hauptstädte', cards: CAP.map(function (c, i) {
     return T(('0' + (i + 1)).slice(-2), 'Wie heißt die Landeshauptstadt von ' + c[0] + '?', c[1], []);
   }) });
+  var CAPEU = [['Deutschland', 'Berlin'], ['Frankreich', 'Paris'], ['Spanien', 'Madrid'], ['Portugal', 'Lissabon'], ['Italien', 'Rom'], ['dem Vereinigten Königreich', 'London'], ['Irland', 'Dublin'], ['Island', 'Reykjavik'],
+    ['Norwegen', 'Oslo'], ['Schweden', 'Stockholm'], ['Finnland', 'Helsinki'], ['Dänemark', 'Kopenhagen'], ['den Niederlanden', 'Amsterdam'], ['Belgien', 'Brüssel'], ['der Schweiz', 'Bern'], ['Österreich', 'Wien'],
+    ['Polen', 'Warschau'], ['der Ukraine', 'Kiew'], ['Russland', 'Moskau'], ['Griechenland', 'Athen'],
+    ['Tschechien', 'Prag'], ['der Slowakei', 'Bratislava'], ['Ungarn', 'Budapest'], ['Rumänien', 'Bukarest'], ['Bulgarien', 'Sofia'], ['Serbien', 'Belgrad'], ['Kroatien', 'Zagreb'], ['Slowenien', 'Ljubljana'],
+    ['Bosnien und Herzegowina', 'Sarajevo'], ['Montenegro', 'Podgorica'], ['Nordmazedonien', 'Skopje'], ['Albanien', 'Tirana'], ['Estland', 'Tallinn'], ['Lettland', 'Riga'], ['Litauen', 'Vilnius'],
+    ['Belarus', 'Minsk'], ['der Republik Moldau', 'Chișinău'], ['Luxemburg', 'Luxemburg']];
+  CH.push({ key: 'b7', label: 'Hauptstädte Europas', cards: CAPEU.map(function (c, i) {
+    return T(('0' + (i + 1)).slice(-2), 'Wie heißt die Hauptstadt von ' + c[0] + '?', c[1], []);
+  }) });
+  var CAPBY = { 'Deutschland': 'Berlin', 'Frankreich': 'Paris', 'Spanien': 'Madrid', 'Portugal': 'Lissabon', 'Italien': 'Rom', 'Vereinigtes Königreich': 'London', 'Irland': 'Dublin', 'Island': 'Reykjavik',
+    'Norwegen': 'Oslo', 'Schweden': 'Stockholm', 'Finnland': 'Helsinki', 'Dänemark': 'Kopenhagen', 'Niederlande': 'Amsterdam', 'Belgien': 'Brüssel', 'Schweiz': 'Bern', 'Österreich': 'Wien',
+    'Polen': 'Warschau', 'Ukraine': 'Kiew', 'Russland': 'Moskau', 'Griechenland': 'Athen', 'Tschechien': 'Prag', 'Slowakei': 'Bratislava', 'Ungarn': 'Budapest', 'Rumänien': 'Bukarest', 'Bulgarien': 'Sofia',
+    'Serbien': 'Belgrad', 'Kroatien': 'Zagreb', 'Slowenien': 'Ljubljana', 'Bosnien und Herzegowina': 'Sarajevo', 'Montenegro': 'Podgorica', 'Nordmazedonien': 'Skopje', 'Albanien': 'Tirana', 'Estland': 'Tallinn',
+    'Lettland': 'Riga', 'Litauen': 'Vilnius', 'Belarus': 'Minsk', 'Republik Moldau': 'Chișinău', 'Luxemburg': 'Luxemburg' };
   /* Einstiegsumfang: Rest bleibt im Code, ist aber in der Oberfläche unsichtbar */
   var HIDDEN = { b2: 1, b5: 1, b6: 1, 'm-de': 1 };
   var TERMS = [];
@@ -488,12 +502,13 @@ var TIERE = (function () {
     { key: 'm-ozean', label: 'Ozeane', noun: 'Ozean', map: 'world', pin: true, items: MD.world.pins.map(function (p) { return { id: 'o-' + p.id, name: p.name, tap: false, x: p.x, y: p.y }; }) },
     { key: 'm-eu1', label: 'Europa · große Länder', noun: 'Land', map: 'eu', items: MD.eu.regions.filter(function (r) { return r.lvl === 1; }).map(function (r) { return { id: r.id, name: r.name, tap: r.tap }; }) },
     { key: 'm-eu2', label: 'Europa · weitere Länder', noun: 'Land', map: 'eu', items: MD.eu.regions.filter(function (r) { return r.lvl === 2; }).map(function (r) { return { id: r.id, name: r.name, tap: r.tap }; }) },
+    { key: 'm-hs', label: 'Hauptstädte auf der Karte', noun: 'Hauptstadt', map: 'eu', cap: true, items: MD.eu.regions.filter(function (r) { return CAPBY[r.name]; }).map(function (r) { return { id: 'hs-' + r.id, rid: r.id, name: r.name, cap: CAPBY[r.name], tap: false }; }) },
     { key: 'm-de', label: 'Deutschland · Bundesländer', noun: 'Bundesland', map: 'de', items: MD.de.regions.map(function (r) { return { id: r.id, name: r.name, tap: r.tap }; }) }
   ];
   var MAPITEMS = [], BY = {}, SETBY = {};
   SETS.forEach(function (s) {
     SETBY[s.key] = s;
-    s.items.forEach(function (it) { it.type = 'map'; it.set = s.key; it.map = s.map; it.pin = !!s.pin; it.tagLabel = s.label; MAPITEMS.push(it); });
+    s.items.forEach(function (it) { it.type = 'map'; it.set = s.key; it.map = s.map; it.pin = !!s.pin; it.isCap = !!s.cap; it.tagLabel = s.label; MAPITEMS.push(it); });
   });
   TERMS.concat(MAPITEMS).forEach(function (it) { BY[it.id] = it; });
   function regionName(mk, id) { var r = MD[mk].regions.filter(function (x) { return x.id === id; })[0]; return r ? r.name : ''; }
@@ -648,7 +663,14 @@ var TIERE = (function () {
     if (!m.pin) shuffle(MD[m.map].regions.slice()).forEach(function (r) { add(r.name); });
     return shuffle(opts);
   }
+  function capOpts(m) {
+    var used = {}; used[m.cap] = 1;
+    var opts = [{ t: m.cap, ok: true }];
+    shuffle(MAPITEMS.filter(function (o) { return o.isCap && o.id !== m.id; })).forEach(function (o) { if (opts.length < 4 && !used[o.cap]) { used[o.cap] = 1; opts.push({ t: o.cap, ok: false }); } });
+    return shuffle(opts);
+  }
   function makeEntry(it, mode) {
+    if (it.isCap) return { it: it, retry: false, kind: 'pick', opts: capOpts(it) };
     if (it.type === 'term') {
       var kind = mode === 'cards' ? 'cards' : 'quiz';
       return { it: it, retry: false, kind: kind, opts: kind === 'quiz' ? termOpts(it) : null };
@@ -853,17 +875,18 @@ var TIERE = (function () {
         mapSvg(it.map, { tap: !done, marks: marks, short: done }) + fb + '</div>' + (done ? next : '');
     } else {
       var marks2 = {};
-      if (!it.pin) marks2[it.id] = 'hi';
-      var reg = it.pin ? null : MD[it.map].regions.filter(function (r) { return r.id === it.id; })[0];
-      var ringId = (reg && reg.small) ? it.id : null;
+      var rid = it.rid || it.id;
+      if (!it.pin) marks2[rid] = 'hi';
+      var reg = it.pin ? null : MD[it.map].regions.filter(function (r) { return r.id === rid; })[0];
+      var ringId = (reg && reg.small) ? rid : null;
       var set = SETBY[it.set];
-      body = '<div class="stage"><section class="card tight">' + tag + '<p class="label">' + (it.pin ? 'Wie heißt der Ozean an der <span class="sw"></span> <b>orangen Markierung</b>?' : 'Wie heißt ' + ({ Kontinent: 'der', Land: 'das', Bundesland: 'das' }[set.noun] || 'der') + ' <span class="sw"></span> <b>orange blinkende</b> ' + set.noun + '?') + '</p></section>' +
+      body = '<div class="stage"><section class="card tight">' + tag + '<p class="label">' + (it.isCap ? 'Wie heißt die Hauptstadt von <b>' + esc(it.name) + '</b>? <span class="muted small">(<span class="sw"></span> orange auf der Karte)</span>' : it.pin ? 'Wie heißt der Ozean an der <span class="sw"></span> <b>orangen Markierung</b>?' : 'Wie heißt ' + ({ Kontinent: 'der', Land: 'das', Bundesland: 'das' }[set.noun] || 'der') + ' <span class="sw"></span> <b>orange blinkende</b> ' + set.noun + '?') + '</p></section>' +
         mapSvg(it.map, { focus: !it.pin, marks: marks2, ring: ringId, pin: it.pin ? { x: it.x, y: it.y } : null, short: true }) + optsHtml(e, s) + '</div>' + (done ? next : '');
     }
     return head + body;
   }
 
-  function wrongLabel(it) { return it.type === 'term' ? '<b>' + esc(it.q) + '</b><div class="de">' + esc(it.a) + '</div>' : '<b>' + esc(it.name) + '</b><div class="de">' + esc(it.tagLabel) + '</div>'; }
+  function wrongLabel(it) { return it.isCap ? '<b>' + esc(it.name) + '</b><div class="de">Hauptstadt: ' + esc(it.cap) + '</div>' : it.type === 'term' ? '<b>' + esc(it.q) + '</b><div class="de">' + esc(it.a) + '</div>' : '<b>' + esc(it.name) + '</b><div class="de">' + esc(it.tagLabel) + '</div>'; }
   function vTestResult() {
     var s = session, ratio = s.total ? s.right / s.total : 0;
     var txt = ratio >= 0.9 ? 'Sehr stark!' : ratio >= 0.7 ? 'Gut gemacht!' : ratio >= 0.5 ? 'Schon ordentlich, da geht mehr.' : 'Noch etwas üben, dann klappt es.';
