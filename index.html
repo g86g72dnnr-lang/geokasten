@@ -237,7 +237,14 @@
   @media (prefers-reduced-motion: no-preference) { .map .ring.pulse { animation: ringp 1.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; } }
   @keyframes ringp { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.18); opacity: .7; } }
 
-  /* Ergebnis */
+  /* Duell */
+  .duelbar { display: flex; align-items: center; gap: 8px; }
+  .duelbar .pl { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 16px; border: 2px solid var(--line); background: var(--surface); font-weight: 600; min-width: 0; }
+  .duelbar .pl span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .duelbar .pl b { font-family: var(--display); font-size: 1.5rem; }
+  .duelbar .pl.on { border-color: var(--hi); background: var(--tip); color: var(--on-tip); }
+  .duelbar .vs { font-weight: 700; color: var(--muted); }
+    /* Ergebnis */
   .result { align-items: center; text-align: center; padding-block: 28px; }
   .stars { display: flex; gap: 8px; color: var(--tip); }
   .stars svg { width: 56px; height: 56px; }
@@ -723,6 +730,7 @@ var TIERE = (function () {
     flame: svg('<path d="M12 2.5c.8 3.6 5.5 5.6 5.5 10.8a5.5 5.5 0 0 1-11 0c0-2.2 1.1-3.6 2.3-4.8.1 1.8.9 2.8 1.9 3.1-.5-3.6.2-6.2 1.3-9.1z" fill="currentColor"/>', 34),
     star: '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,2 15,9 22,9.5 16.5,14 18.5,21 12,17 5.5,21 7.5,14 2,9.5 9,9" fill="currentColor"/></svg>',
     check: svg('<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>', 22),
+    duel: svg('<circle cx="8" cy="7.5" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="7.5" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 19c0-3 2.4-5 5.5-5s5.5 2 5.5 5M10.5 19c0-3 2.4-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'),
     cross: svg('<path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>', 22)
   };
 
@@ -804,6 +812,7 @@ var TIERE = (function () {
       mode('start', 'cards', ICON.cards, 'Karteikarten', 'Begriffe umdrehen und selbst prüfen', !sT.length) +
       mode('start', 'quiz', ICON.quiz, 'Quiz', 'Vier Antworten, eine ist richtig', !sT.length) +
       mode('start', 'map', ICON.globe, 'Karten-Training', 'Länder und Orte auf der Karte finden', !sM.length) +
+      mode('duel-setup', '', ICON.duel, 'Duell zu zweit', DB.profiles[0].name + ' gegen ' + DB.profiles[1].name + ' auf einem Gerät', false) +
       mode('start-test', '', ICON.check, 'Mini-Test', Math.min(TEST_SIZE, nSel) + ' Fragen gemischt, ohne Hilfen', !nSel) +
       '</div>' +
       '<section class="card"><h3 style="font-size:1.15rem">Dein Kasten</h3><div class="trays">' + trays + '</div>' +
@@ -848,6 +857,23 @@ var TIERE = (function () {
       (s.test ? '<p class="note">Mini-Test · ohne Hilfen, zählt nicht für den Fortschritt</p>' : s.practice ? '<p class="note">Übungsrunde · zählt nicht für die Serie</p>' : '');
     var tag = '<span class="tag">' + esc(it.tagLabel) + '</span>', body = '';
     var done = s.phase === 'result';
+    if (s.duel) {
+      var tn = s.i % 2, rd = Math.floor(s.i / 2), stich = rd >= s.rounds;
+      var rlabel = stich ? 'Stichfrage' : 'Runde ' + (rd + 1) + ' von ' + s.rounds;
+      head = '<div class="shead"><button class="icon-btn" data-a="quit" aria-label="Beenden">' + ICON.back + '</button><span class="count" style="margin-left:auto">' + rlabel + '</span></div>' + duelBar(s, tn);
+      if (s.phase === 'handoff') {
+        return head + '<div class="stage"><section class="card center"><div class="big">' + esc(s.names[0]) + ' ist dran!</div><p class="muted">Gib das Gerät an ' + esc(s.names[0]) + '. ' + esc(s.names[1]) + ' schaut bitte weg.</p></section></div>' +
+          '<div class="actions"><button class="btn primary" data-a="duel-go">Ich bin bereit</button></div>';
+      }
+      if (tn === 0 && done) {
+        return head + '<div class="stage"><section class="card center"><div class="big">Antwort gespeichert</div><p class="muted">Gib das Gerät jetzt an ' + esc(s.names[1]) + '. ' + esc(s.names[0]) + ' schaut bitte weg und verrät nicht, ob es richtig war!</p></section></div>' +
+          '<div class="actions"><button class="btn primary" data-a="next">' + esc(s.names[1]) + ' ist bereit</button></div>';
+      }
+      var rr = s.rr[rd] || [];
+      head += tn === 1 && done
+        ? '<p class="note">' + esc(s.names[0]) + (rr[0] ? ' ✓ richtig' : ' ✗ falsch') + ' · ' + esc(s.names[1]) + (rr[1] ? ' ✓ richtig' : ' ✗ falsch') + '</p>'
+        : '<p class="note"><b>' + esc(s.names[tn]) + '</b> ist dran</p>';
+    }
     var next = '<div class="actions"><button class="btn primary" data-a="next">Weiter</button></div>';
 
     if (kind === 'cards') {
@@ -961,6 +987,73 @@ var TIERE = (function () {
       '<section class="sec"><h2>Fortschritt</h2>' + resets + '</section>';
   }
 
+
+  /* ---------- Duell zu zweit (ein Gerät) ---------- */
+  var duelCfg = { first: 'rand', rounds: 10, off: {} };
+  function duelItems() {
+    var out = [];
+    TERMS.forEach(function (t) { if (HIDDEN[t.ch] || duelCfg.off[t.ch]) return; if (t.ch === 'b7' && !duelCfg.off['m-hs']) return; out.push(t); });
+    MAPITEMS.forEach(function (m) { if (!HIDDEN[m.set] && !duelCfg.off[m.set]) out.push(m); });
+    return out;
+  }
+  function duelPair(it) {
+    var e1 = makeEntry(it, it.type === 'term' ? 'quiz' : 'map');
+    return [e1, { it: e1.it, retry: false, kind: e1.kind, opts: e1.opts }];
+  }
+  function startDuel() {
+    var pool = shuffle(duelItems());
+    if (pool.length < 2) return;
+    var pl = DB.profiles.slice(0, 2);
+    var f = duelCfg.first === 'rand' ? (Math.random() < 0.5 ? 0 : 1) : +duelCfg.first;
+    var pp = f === 0 ? [pl[0], pl[1]] : [pl[1], pl[0]];
+    var n = Math.min(duelCfg.rounds, pool.length), q = [];
+    pool.slice(0, n).forEach(function (it) { duelPair(it).forEach(function (e) { q.push(e); }); });
+    session = { mode: 'duel', duel: true, names: [pp[0].name, pp[1].name], score: [0, 0], rounds: n, rr: [], pool: pool, pi: n, extra: 0, i: 0, right: 0, total: 0, q: q, phase: 'handoff', res: null };
+    view = 'session'; render();
+  }
+  function duelAdvance() {
+    var s = session; s.i++;
+    if (s.i >= s.q.length) {
+      if (s.score[0] === s.score[1] && s.extra < 3 && s.pi < s.pool.length) { var p = duelPair(s.pool[s.pi++]); s.q.push(p[0], p[1]); s.extra++; }
+      else { view = 'duelend'; render(); return; }
+    }
+    s.phase = (s.i % 2 === 0) ? 'handoff' : 'ask'; s.res = null; render();
+  }
+  function duelBar(s, tn) {
+    function pl(k) { return '<div class="pl' + (tn === k ? ' on' : '') + '"><span>' + esc(s.names[k]) + '</span><b>' + s.score[k] + '</b></div>'; }
+    return '<div class="duelbar">' + pl(0) + '<div class="vs">:</div>' + pl(1) + '</div>';
+  }
+  function vDuelSetup() {
+    var pl = DB.profiles.slice(0, 2), c = duelCfg;
+    function btn(a, v, label, on) { return '<button class="btn sm ' + (on ? 'primary' : 'ghost') + '" data-a="' + a + '" data-v="' + v + '" style="width:100%">' + label + '</button>'; }
+    var first = '<div class="actions" style="grid-template-columns:1fr 1fr 1fr">' + btn('duel-first', '0', esc(pl[0].name), c.first === '0') + btn('duel-first', '1', esc(pl[1].name), c.first === '1') + btn('duel-first', 'rand', 'Zufall', c.first === 'rand') + '</div>';
+    var rounds = '<div class="actions" style="grid-template-columns:1fr 1fr 1fr">' + [5, 10, 15].map(function (n) { return btn('duel-rounds', n, n + ' Runden', c.rounds === n); }).join('') + '</div>';
+    var topics = GROUPS.map(function (g) {
+      return '<div class="grp">' + g.title + '</div><div class="chaps">' + g.keys.map(function (k) {
+        return '<label class="switch chap"><input type="checkbox" data-dchap="' + k.key + '"' + (c.off[k.key] ? '' : ' checked') + '><span>' + esc(k.label) + '</span></label>';
+      }).join('') + '</div>';
+    }).join('');
+    var n = duelItems().length;
+    return '<div class="shead"><button class="icon-btn" data-a="quit" aria-label="Zurück">' + ICON.back + '</button><h1 style="font-size:1.7rem">Duell zu zweit</h1></div>' +
+      '<div class="stage"><section class="card"><p><b>' + esc(pl[0].name) + ' gegen ' + esc(pl[1].name) + '</b></p><p class="muted">Ihr bekommt dieselben Fragen, immer abwechselnd, auf einem Gerät. Wer mehr richtig hat, gewinnt. Das Duell zählt nicht für Serie und Lernfortschritt.</p></section>' +
+      '<section class="card"><h3 style="font-size:1.15rem">Wer fängt an?</h3>' + first + '</section>' +
+      '<section class="card"><h3 style="font-size:1.15rem">Wie viele Runden?</h3>' + rounds + '</section>' +
+      '<section class="card"><h3 style="font-size:1.15rem">Welche Themen?</h3>' + topics + (n < 2 ? '<p class="note">Bitte wähle mindestens ein Thema aus.</p>' : '') + '</section></div>' +
+      '<div class="actions"><button class="btn primary" data-a="duel-start"' + (n < 2 ? ' disabled' : '') + '>Los geht\'s</button></div>';
+  }
+  function vDuelEnd() {
+    var s = session, a = s.score[0], b = s.score[1], tie = a === b;
+    var title = tie ? 'Unentschieden!' : esc(s.names[a > b ? 0 : 1]) + ' gewinnt!';
+    var sub = tie ? 'Ihr seid beide richtig gut.' : 'Gut gespielt, ihr beide!';
+    var rows = s.rr.map(function (r, i) {
+      var it = s.q[i * 2].it;
+      return '<div class="li"><div>' + wrongLabel(it) + '</div><span>' + (r[0] ? '✓' : '✗') + ' ' + (r[1] ? '✓' : '✗') + '</span></div>';
+    }).join('');
+    return '<div class="stage"><section class="card result"><h1 style="font-size:2rem">' + title + '</h1><div class="big">' + a + ' : ' + b + '</div><p class="muted">' + esc(s.names[0]) + ' : ' + esc(s.names[1]) + '</p><p>' + sub + '</p></section>' +
+      '<section class="sec"><h2>Alle Fragen</h2><p class="muted small">Links ' + esc(s.names[0]) + ', rechts ' + esc(s.names[1]) + '</p><div class="list">' + rows + '</div></section></div>' +
+      '<div class="actions two"><button class="btn ghost" data-a="quit">Zurück</button><button class="btn primary" data-a="duel-start">Revanche</button></div>';
+  }
+
   /* ---------- Rendern ---------- */
   function render() {
     var app = $('#app'), h;
@@ -969,6 +1062,8 @@ var TIERE = (function () {
     else if (view === 'home') h = vHome();
     else if (view === 'session') h = vSession();
     else if (view === 'result') h = vResult();
+    else if (view === 'duelsetup') h = vDuelSetup();
+    else if (view === 'duelend') h = vDuelEnd();
     else if (view === 'gate') h = vGate();
     else h = vParents();
     app.innerHTML = h;
@@ -979,6 +1074,7 @@ var TIERE = (function () {
       var rt = session.total ? session.right / session.total : 0;
       sfx(rt >= 0.9 ? 'r3' : rt >= 0.7 ? 'r2' : 'r1');
     }
+    if (view === 'duelend' && session && !session.sfxDone) { session.sfxDone = true; sfx('r3'); }
     if (view === 'gate') { var gi = $('#gateAns'); if (gi) gi.focus(); }
   }
 
@@ -1002,6 +1098,7 @@ var TIERE = (function () {
 
   function record(ok) {
     var s = session, e = s.q[s.i], it = e.it;
+    if (s.duel) { var rd0 = Math.floor(s.i / 2), tn0 = s.i % 2; (s.rr[rd0] = s.rr[rd0] || [])[tn0] = ok; if (ok) s.score[tn0]++; if (tn0 === 1) sfx(ok ? 'ok' : 'bad'); return; }
     if (e.retry) return;
     s.total++; if (ok) s.right++;
     sfx(ok ? 'ok' : 'bad');
@@ -1018,14 +1115,16 @@ var TIERE = (function () {
   }
 
   function nextItem() {
-    var s = session; clearTimeout(s.timer); s.i++;
+    var s = session; clearTimeout(s.timer);
+    if (s.duel) { duelAdvance(); return; }
+    s.i++;
     if (s.i >= s.q.length) { view = 'result'; render(); return; }
     s.phase = s.q[s.i].kind === 'cards' ? 'front' : 'ask'; s.res = null; render();
   }
   function autoNext(ok) {
     var s = session, at = s.i;
     clearTimeout(s.timer);
-    if (!ok) return;
+    if (!ok || s.duel) return;
     s.timer = setTimeout(function () { if (view === 'session' && session === s && s.phase === 'result' && s.i === at) nextItem(); }, 1100);
   }
 
@@ -1076,6 +1175,11 @@ var TIERE = (function () {
       s.res = { id: d.id }; s.phase = 'result'; record(ok); render(); autoNext(ok);
     },
     next: function () { nextItem(); },
+    'duel-setup': function () { view = 'duelsetup'; render(); },
+    'duel-first': function (d) { duelCfg.first = d.v; keepScroll(); },
+    'duel-rounds': function (d) { duelCfg.rounds = +d.v; keepScroll(); },
+    'duel-start': function () { startDuel(); },
+    'duel-go': function () { session.phase = 'ask'; render(); },
     reset: function (d) { resetFor = d.id; render(); },
     'reset-no': function () { resetFor = null; render(); },
     'reset-yes': function (d) { var old = DB.prog[d.id] || {}; DB.prog[d.id] = { cards: {}, days: {}, pet: old.pet, seen: 0 }; save(); resetFor = null; render(); }
@@ -1100,6 +1204,7 @@ var TIERE = (function () {
       if (!t.checked) off.push(t.dataset.chap);
       DB.settings.off = off; save(); keepScroll();
     }
+    if (t.dataset && t.dataset.dchap) { if (t.checked) delete duelCfg.off[t.dataset.dchap]; else duelCfg.off[t.dataset.dchap] = 1; keepScroll(); }
     if (t.id === 'sndToggle') { DB.settings.sound = t.checked; save(); if (t.checked) sfx('ok'); }
   });
 
