@@ -516,6 +516,8 @@ var TIERE = (function () {
         d.settings = Object.assign(d.settings, r.settings || {});
         d.device = r.device || null;
         d.profiles.forEach(function (p) { if (!d.prog[p.id]) d.prog[p.id] = { cards: {}, days: {} }; });
+        /* Tier-Funktion ist in der Oberfläche abgeschaltet: alte Tierwahl ignorieren */
+        d.profiles.forEach(function (p) { delete d.prog[p.id].pet; delete d.prog[p.id].seen; });
         return d;
       }
     } catch (e) {}
